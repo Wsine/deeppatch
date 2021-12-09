@@ -34,8 +34,7 @@ def cache_object(filename):
     def _decorator(func):
         def __func_wrapper(*args, **kwargs):
             cache_dir = args[0].cache_dir if hasattr(args[0], 'cache_dir') else 'cache'
-            prefix = f'{args[0].dataset}_' if hasattr(args[0], 'dataset') else ''
-            filepath = os.path.join(cache_dir, prefix + filename)
+            filepath = os.path.join(cache_dir, filename)
             try:
                 cache = pickle.load(open(filepath, 'rb'))
             except IOError:

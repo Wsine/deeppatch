@@ -5,8 +5,10 @@ import torch
 import torch.utils.data
 import torchvision
 import torchvision.transforms as T
+from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 
+from augmentor import GeneticAugmentor
 from utils import cache_object
 
 
@@ -49,6 +51,55 @@ class PostTransformDataset(torch.utils.data.Dataset):
         return len(self.dataset)
 
 
+# refer: https://dl.acm.org/doi/10.1145/3377811.3380415
+class SenseiAugmentedDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset, rob_threshold, **kwargs):
+        self.dataset = dataset
+        self.is_robust = [False] * len(dataset)
+        image_shape = self.dataset[0][0].size()[-2:]
+        self.augmentors = [
+            GeneticAugmentor(image_shape, **kwargs)
+            for _ in range(len(self.dataset))
+        ]
+        self.non_rob_idx = []
+        self.rob_thres = rob_threshold
+
+    def __getitem__(self, idx):
+        sidx = self.non_rob_idx[idx]
+        (x, y), augmentor = self.dataset[sidx], self.augmentors[sidx]
+        x, *_ = augmentor(x, single=True)
+        return x, y
+
+    def __len__(self):
+        return len(self.non_rob_idx)
+
+    @torch.no_grad()
+    def selective_augment(self, model, criterion, batch_size, device):
+        model.eval()
+        sel_batch = math.floor(batch_size / self.augmentors[0].popsize)
+        dataloader = torch.utils.data.DataLoader(
+            self.dataset, batch_size=sel_batch, shuffle=False, num_workers=4
+        )
+        for bidx, (xs, ys) in enumerate(tqdm(dataloader, desc='Select')):
+            inputs, targets = [], []
+            for i, (x, y) in enumerate(zip(xs, ys)):
+                idx = bidx * sel_batch + i
+                augmentor = self.augmentors[idx]
+                inputs.extend(augmentor(x, single=False))
+                targets.append(torch.ones(augmentor.popsize, dtype=torch.long) * y)
+            inputs = torch.stack(inputs).to(device)  # type: ignore
+            targets = torch.cat(targets).to(device)
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            for i in range(ys.size(0)):
+                idx = bidx * sel_batch + i
+                augmentor = self.augmentors[idx]
+                bloss = loss[i * augmentor.popsize : (i + 1) * augmentor.popsize]
+                augmentor.fitness(bloss, GeneticAugmentor.Fitness.LARGEST)
+                self.is_robust[idx] = True if torch.all(bloss.lt(self.rob_thres)) else False
+        self.non_rob_idx = [i for i, r in enumerate(self.is_robust) if r is False]
+
+
 def load_noisy_dataset(_, baseset, comm_trsf, noise_type, gblur_std=None):
     if noise_type == 'random':
         trsf = RandomApply(RandomApplyOne([
@@ -85,7 +136,7 @@ def compute_mean_std(opt, dataset_name):
     entry = eval(f'torchvision.datasets.{dataset_name}')
     dataset = entry(root=opt.data_dir, train=True, download=False, transform=T.ToTensor())
     loader = torch.utils.data.DataLoader(
-        dataset, batch_size=opt.batch_size, shuffle=False, num_workers=2
+        dataset, batch_size=opt.batch_size, shuffle=False, num_workers=4
     )
     mean, std = 0., 0.
     nb_samples = 0.
@@ -102,7 +153,8 @@ def compute_mean_std(opt, dataset_name):
     return mean, std
 
 
-def load_dataset(opt, split, noise=False, **kwargs):
+def load_dataset(opt, split, noise=False, aug=False, **kwargs):
+    assert opt.dataset.upper() in dir(torchvision.datasets)
     entry = eval(f'torchvision.datasets.{opt.dataset.upper()}')
 
     # handle split
@@ -129,10 +181,18 @@ def load_dataset(opt, split, noise=False, **kwargs):
             base_dataset, transform=T.Compose(common_transformers)
         )
 
+    # handle augmentation
+    if aug is True:
+        dataset = SenseiAugmentedDataset(
+            dataset,
+            opt.robust_threshold, popsize=opt.popsize, crossover_prob=opt.crossover_prob
+        )
+        return dataset, None
+
     # handle data loader
     shuffle = True if split == 'train' else False
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=opt.batch_size, shuffle=shuffle, num_workers=2
+        dataset, batch_size=opt.batch_size, shuffle=shuffle, num_workers=4
     )
 
     return dataset, dataloader

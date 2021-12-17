@@ -60,9 +60,9 @@ def main():
         model = construct_model(opt, model).to(device)
         ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_g{opt.gpu}'))
         model.load_state_dict(ckp['net'])
-    elif hasattr(opt, 'crt_method') and opt.crt_method == 'finetune':  # finetune
+    elif hasattr(opt, 'crt_method'):  # finetune or sensei
         model = load_model(opt, pretrained=False).to(device)
-        ckp = torch.load(get_model_path(opt, state=f'finetune_g{opt.gpu}'))
+        ckp = torch.load(get_model_path(opt, state=f'{opt.crt_method}_g{opt.gpu}'))
         model.load_state_dict(ckp['net'])
     else:  # pretrained
         model = load_model(opt, pretrained=True).to(device)

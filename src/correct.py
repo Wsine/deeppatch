@@ -3,6 +3,7 @@ import json
 import random
 
 import torch
+import torch.utils.data
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -95,7 +96,7 @@ class NoneCorrect(nn.Module):
 def construct_model(opt, model, patch=True):
     sus_filters = json.load(open(os.path.join(
         opt.output_dir, opt.dataset, opt.model, f'susp_filters_{opt.fs_method}.json'
-    ))) if opt.susp_side in ('front', 'rear') else None
+    ))) if opt.susp_side in ('front', 'rear') else {}
 
     conv_names = [n for n, m in model.named_modules() if isinstance(m, nn.Conv2d)]
     for layer_name in conv_names:
@@ -224,6 +225,45 @@ def finetune(opt, model, device):
                 'acc': acc
             }
             torch.save(state, get_model_path(opt, state=f'finetune_g{opt.gpu}'))
+            best_acc = acc
+        scheduler.step()
+    print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))
+
+
+@dispatcher.register('sensei')
+def sensei(opt, model, device):
+    trainset, _ = load_dataset(opt, split='train', noise=True, noise_type='random', aug=True)
+    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+
+    model = model.to(device)
+
+    criterion = torch.nn.CrossEntropyLoss(reduction='mean')
+    sel_criterion = torch.nn.CrossEntropyLoss(reduction='none')
+    optimizer = torch.optim.SGD(
+        model.parameters(),
+        lr=opt.lr, momentum=opt.momentum, weight_decay=opt.weight_decay
+    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+
+    best_acc, *_ = test(model, valloader, criterion, device, desc='Baseline')
+    for epoch in range(0, opt.crt_epoch):
+        print('Epoch: {}'.format(epoch))
+        trainset.selective_augment(model, sel_criterion, opt.batch_size, device)  # type: ignore
+        trainloader = torch.utils.data.DataLoader(
+            trainset, batch_size=opt.batch_size, shuffle=True, num_workers=2
+        )
+        train(model, trainloader, optimizer, criterion, device)
+        acc, *_ = test(model, valloader, criterion, device)
+        if acc > best_acc:
+            print('Saving...')
+            state = {
+                'cepoch': epoch,
+                'net': model.state_dict(),
+                'optim': optimizer.state_dict(),
+                'sched': scheduler.state_dict(),
+                'acc': acc
+            }
+            torch.save(state, get_model_path(opt, state=f'sensei_g{opt.gpu}'))
             best_acc = acc
         scheduler.step()
     print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))

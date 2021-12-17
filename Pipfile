@@ -4,19 +4,13 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-torch = {version = "==1.8.1", index = "https://download.pytorch.org/whl/cu111/"}
-torchvision = {version = "==0.9.1", index = "https://download.pytorch.org/whl/cu111/"}
+numpy = "*"
+torch = "==1.8.1"
+torchvision = "==0.9.1"
 tqdm = "*"
 sklearn = "*"
-pandas = "*"
-pillow = ">=8.3.2"
-
-[dev-packages]
-notebook = ">=6.4.1"
-jupyter-http-over-ws = "*"
-jedi = "==0.17.2"
-ipywidgets = "*"
-matplotlib = "*"
+# pandas = "*"
+# pillow = ">=8.3.2"
 
 [requires]
 python_version = "3.6"

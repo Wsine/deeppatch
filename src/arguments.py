@@ -1,3 +1,4 @@
+import sys
 import argparse
 
 
@@ -24,7 +25,7 @@ datasets = ['cifar10', 'cifar100']
 models = ['resnet32', 'mobilenetv2_x0_5', 'vgg13_bn', 'shufflenetv2_x1_0']
 noises = ['gaussion']
 fsmethods = ['featswap', 'perfloss', 'ratioestim']
-crtmethods = ['patch', 'finetune']
+crtmethods = ['patch', 'finetune', 'sensei']
 
 
 commparser = argparse.ArgumentParser(add_help=False)
@@ -45,10 +46,13 @@ optim_group.add_argument('--weight_decay', type=float, default=5e-4)
 optim_group.add_argument('-e', '--max_epoch', type=int, default=50)
 
 advparser = argparse.ArgumentParser(parents=[commparser])
-advparser.add_argument('-f', '--fs_method', type=str, required=True, choices=fsmethods)
 advparser.add_argument('-c', '--crt_method', type=str, required=True, choices=crtmethods)
+advparser.add_argument('-f', '--fs_method', type=str, default=None, required='patch' in sys.argv, choices=fsmethods)
 advparser.add_argument('--crt_type', type=str, choices=['crtunit', 'replace'])
 advparser.add_argument('--crt_epoch', type=int, default=20)
 advparser.add_argument('--susp_ratio', type=float, default=0.25)
 advparser.add_argument('--susp_side', type=str, default='front', choices=['front', 'rear', 'random'])
+advparser.add_argument('--robust_threshold', type=float, default=1e-3)
+advparser.add_argument('--popsize', type=int, default=10)
+advparser.add_argument('--crossover_prob', type=float, default=0.4)
 

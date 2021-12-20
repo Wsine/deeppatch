@@ -8,7 +8,7 @@ import torchvision.transforms as T
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 
-from augmentor import GeneticAugmentor
+from augmentor import GeneticAugmentor, NeighborAugmentor
 from utils import cache_object
 
 
@@ -49,6 +49,23 @@ class PostTransformDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.dataset)
+
+
+class NeighborAugmentedDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset, num_neighbors, **kwargs):
+        self.dataset = dataset
+        self.num_neighbors = num_neighbors
+        image_shape = self.dataset[0][0].size()[-2:]
+        self.augmentor = NeighborAugmentor(image_shape, num_neighbors, **kwargs)
+
+    def __getitem__(self, idx):
+        x, y = self.dataset[idx // self.num_neighbors]
+        n_idx = idx // len(self.dataset)
+        x = self.augmentor(x, n_idx)
+        return x, y
+
+    def __len__(self):
+        return len(self.dataset) * self.num_neighbors
 
 
 # refer: https://dl.acm.org/doi/10.1145/3377811.3380415
@@ -163,11 +180,11 @@ def load_dataset(opt, split, noise=False, aug=False, **kwargs):
     elif split == 'val':
         base_largeset = entry(root=opt.data_dir, train=True, download=True)
         _, base_dataset = train_test_split(
-            base_largeset, test_size=1./50, random_state=2021, stratify=base_largeset.targets)
+            base_largeset, test_size=1./50, random_state=opt.seed, stratify=base_largeset.targets)
     elif split == 'train':
         base_largeset = entry(root=opt.data_dir, train=True, download=True)
         base_dataset, _ = train_test_split(
-            base_largeset, test_size=1./50, random_state=2021, stratify=base_largeset.targets)
+            base_largeset, test_size=1./50, random_state=opt.seed, stratify=base_largeset.targets)
     else:
         raise ValueError('Invalid parameter of split')
 
@@ -183,11 +200,14 @@ def load_dataset(opt, split, noise=False, aug=False, **kwargs):
 
     # handle augmentation
     if aug is True:
-        dataset = SenseiAugmentedDataset(
-            dataset,
-            opt.robust_threshold, popsize=opt.popsize, crossover_prob=opt.crossover_prob
-        )
-        return dataset, None
+        if split == 'train':
+            dataset = SenseiAugmentedDataset(
+                dataset,
+                opt.robust_threshold, popsize=opt.popsize, crossover_prob=opt.crossover_prob
+            )
+            return dataset, None
+        else:
+            dataset = NeighborAugmentedDataset(dataset, opt.num_neighbors, seed=opt.seed)
 
     # handle data loader
     shuffle = True if split == 'train' else False

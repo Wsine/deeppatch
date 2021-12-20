@@ -36,6 +36,7 @@ commparser.add_argument('--gpu', type=int, default=3, choices=[0, 1, 2, 3])
 commparser.add_argument('-b', '--batch_size', type=int, default=256)
 commparser.add_argument('-m', '--model', type=str, required=True, choices=models)
 commparser.add_argument('-r', '--resume', action='store_true')
+commparser.add_argument('--seed', type=int, default=2021)
 data_group = commparser.add_argument_group('dataset')
 data_group.add_argument('-d', '--dataset', type=str, required=True, choices=datasets)
 data_group.add_argument('-n', '--noise_type', type=str, default='gaussion', choices=noises)
@@ -55,4 +56,5 @@ advparser.add_argument('--susp_side', type=str, default='front', choices=['front
 advparser.add_argument('--robust_threshold', type=float, default=1e-3)
 advparser.add_argument('--popsize', type=int, default=10)
 advparser.add_argument('--crossover_prob', type=float, default=0.4)
+advparser.add_argument('--num_neighbors', type=int, default=50)
 

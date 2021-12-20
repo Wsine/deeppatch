@@ -232,8 +232,8 @@ def finetune(opt, model, device):
 
 @dispatcher.register('sensei')
 def sensei(opt, model, device):
-    trainset, _ = load_dataset(opt, split='train', noise=True, noise_type='random', aug=True)
-    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+    trainset, _ = load_dataset(opt, split='train', aug=True)
+    _, valloader = load_dataset(opt, split='val', aug=True)
 
     model = model.to(device)
 
@@ -250,7 +250,7 @@ def sensei(opt, model, device):
         print('Epoch: {}'.format(epoch))
         trainset.selective_augment(model, sel_criterion, opt.batch_size, device)  # type: ignore
         trainloader = torch.utils.data.DataLoader(
-            trainset, batch_size=opt.batch_size, shuffle=True, num_workers=2
+            trainset, batch_size=opt.batch_size, shuffle=True, num_workers=4
         )
         train(model, trainloader, optimizer, criterion, device)
         acc, *_ = test(model, valloader, criterion, device)

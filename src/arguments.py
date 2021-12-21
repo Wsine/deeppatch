@@ -24,8 +24,9 @@ devices = ['cpu', 'cuda']
 datasets = ['cifar10', 'cifar100']
 models = ['resnet32', 'mobilenetv2_x0_5', 'vgg13_bn', 'shufflenetv2_x1_0']
 noises = ['gaussion']
-fsmethods = ['featswap', 'perfloss', 'ratioestim']
 crtmethods = ['patch', 'finetune', 'sensei']
+fsmethods = ['featswap', 'perfloss', 'ratioestim']
+ptmethods = ['dc', 'dp', 'dp-s']
 
 
 commparser = argparse.ArgumentParser(add_help=False)
@@ -49,6 +50,7 @@ optim_group.add_argument('-e', '--max_epoch', type=int, default=50)
 advparser = argparse.ArgumentParser(parents=[commparser])
 advparser.add_argument('-c', '--crt_method', type=str, required=True, choices=crtmethods)
 advparser.add_argument('-f', '--fs_method', type=str, default=None, required='patch' in sys.argv, choices=fsmethods)
+advparser.add_argument('-p', '--pt_method', type=str, default=None, required='patch' in sys.argv, choices=ptmethods)
 advparser.add_argument('--crt_type', type=str, choices=['crtunit', 'replace'])
 advparser.add_argument('--crt_epoch', type=int, default=20)
 advparser.add_argument('--susp_ratio', type=float, default=0.25)

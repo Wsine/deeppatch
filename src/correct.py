@@ -139,8 +139,12 @@ def extract_indices(model):
 
 @dispatcher.register('patch')
 def patch(opt, model, device):
-    _, trainloader = load_dataset(opt, split='train', noise=True, noise_type='random')
-    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+    if opt.pt_method == 'dp-s':
+        _, trainloader = load_dataset(opt, split='train', aug=True)
+        _, valloader = load_dataset(opt, split='val', aug=True)
+    else:
+        _, trainloader = load_dataset(opt, split='train', noise=True, noise_type='random')
+        _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
 
     model = construct_model(opt, model)
     model = model.to(device)

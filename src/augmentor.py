@@ -9,7 +9,7 @@ import torchvision.transforms.functional as TF
 
 class Transformation(object):
     def __init__(
-            self, range_boundary, mutate_step,
+            self, range_boundary, range_step, mutate_step,
             center_point=0, shape=None, rand_init=True):
         self.mutate_step = mutate_step
 
@@ -19,7 +19,7 @@ class Transformation(object):
 
         rmin = center_point - range_boundary
         rmax = center_point + range_boundary + 1e-5
-        self.range = np.arange(rmin, rmax, self.mutate_step)
+        self.range = np.arange(rmin, rmax, range_step)
 
         self.value = random.choice(self.range) if rand_init is True else center_point
 
@@ -35,18 +35,20 @@ class Chromosome(object):
 
     def __init__(self, image_shape, **kwargs):
         # rotate: [-30, 30, 1] degrees
-        self.rotate = Transformation(30, 1, **kwargs)
+        self.rotate = Transformation(30, 1, 6, **kwargs)
         # translate: [-10%, 10%, 1] pixels
-        self.translate = Transformation('10%', 1, shape=image_shape[0], **kwargs)
-        self.translate_v = Transformation('10%', 1, shape=image_shape[1], **kwargs)
+        self.translate = Transformation('10%', 1, 1, shape=image_shape[0], **kwargs)
+        self.translate_v = Transformation('10%', 1, 1, shape=image_shape[1], **kwargs)
         # shear: [-10%, 10%, 3.0] degrees
-        self.shear = Transformation('10%', 3., shape=180, **kwargs)
+        self.shear = Transformation('10%', 3., 3.6, shape=180, **kwargs)
         # zoom: [0.9, 1.1, 0.05] factor
-        self.zoom = Transformation(0.1, 0.05, center_point=1, **kwargs)
-        # brighten: [0.8, 1.2, 0.05] factor
-        self.brighten = Transformation(0.2, 0.05, center_point=1, **kwargs)
+        self.zoom = Transformation(0.1, 0.05, 0.02, center_point=1, **kwargs)
+        #  brighten: [0.8, 1.2, 0.05] factor
+        #  self.brighten = Transformation(0.2, 0.05, center_point=1, **kwargs)
+        # brighten: [-32, 32, 2] factor
+        self.brighten = Transformation(32, 2, 4, **kwargs)
         # contrast: [0.8, 1.2, 0.05] factor
-        self.contrast = Transformation(0.2, 0.05, center_point=1, **kwargs)
+        self.contrast = Transformation(0.2, 0.05, 0.05, center_point=1, **kwargs)
 
         self.trans = [attr for attr in dir(self) \
                 if not callable(getattr(self, attr)) and not attr.startswith('__')]
@@ -59,7 +61,8 @@ class Chromosome(object):
             self.zoom.value,
             self.shear.value
         )
-        x = TF.adjust_brightness(x, self.brighten.value)
+        #  x = TF.adjust_brightness(x, self.brighten.value)
+        x = x.add(self.brighten.value / 255.).clamp(0, 1)
         x = TF.adjust_contrast(x, self.contrast.value)
         return x
 
@@ -78,7 +81,7 @@ class Chromosome(object):
                 value = t.range[0] + t.range[-1] - t.value
             else:
                 raise NotImplementedError
-            setattr(item, c, value)
+            getattr(item, c).value = value
         return item
 
     def crossover(self, other):
@@ -173,4 +176,13 @@ class NeighborAugmentor(object):
         x = self.chromo(x)
         tran.reset()
         return x
+
+
+class RandomAugmentor(object):
+    def __init__(self, image_shape):
+        self.chromo = Chromosome(image_shape)
+
+    def __call__(self, x):
+        self.chromo = self.chromo.mutate()
+        return self.chromo(x)
 

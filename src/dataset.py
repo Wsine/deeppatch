@@ -8,7 +8,7 @@ import torchvision.transforms as T
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 
-from augmentor import GeneticAugmentor, NeighborAugmentor
+from augmentor import GeneticAugmentor, NeighborAugmentor, RandomAugmentor
 from utils import cache_object
 
 
@@ -45,6 +45,21 @@ class PostTransformDataset(torch.utils.data.Dataset):
             x = self.transform(x)
         if self.target_transform is not None:
             y = self.target_transform(y)
+        return x, y
+
+    def __len__(self):
+        return len(self.dataset)
+
+
+class RandomAugmentedDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+        image_shape = self.dataset[0][0].size()[-2:]
+        self.augmentor = RandomAugmentor(image_shape)
+
+    def __getitem__(self, idx):
+        x, y = self.dataset[idx]
+        x = self.augmentor(x)
         return x, y
 
     def __len__(self):
@@ -201,11 +216,14 @@ def load_dataset(opt, split, noise=False, aug=False, **kwargs):
     # handle augmentation
     if aug is True:
         if split == 'train':
-            dataset = SenseiAugmentedDataset(
-                dataset,
-                opt.robust_threshold, popsize=opt.popsize, crossover_prob=opt.crossover_prob
-            )
-            return dataset, None
+            if opt.crt_method == 'sensei':
+                dataset = SenseiAugmentedDataset(
+                    dataset,
+                    opt.robust_threshold, popsize=opt.popsize, crossover_prob=opt.crossover_prob
+                )
+                return dataset, None
+            else:
+                dataset = RandomAugmentedDataset(dataset)
         else:
             dataset = NeighborAugmentedDataset(dataset, opt.num_neighbors, seed=opt.seed)
 

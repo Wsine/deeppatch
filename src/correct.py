@@ -117,9 +117,9 @@ def construct_model(opt, model, patch=True):
 
         if patch is False:
             correct_module = NoneCorrect(module, indices)
-        elif opt.crt_type == 'crtunit':
+        elif opt.pt_method == 'DC':
             correct_module = ConcatCorrect(module, indices)
-        elif opt.crt_type == 'replace':
+        elif opt.pt_method.startswith('DP'):
             correct_module = ReplaceCorrect(module, indices)
         else:
             raise ValueError('Invalid correct type')
@@ -139,7 +139,7 @@ def extract_indices(model):
 
 @dispatcher.register('patch')
 def patch(opt, model, device):
-    if opt.pt_method == 'dp-s':
+    if opt.pt_method == 'DP-s':
         _, trainloader = load_dataset(opt, split='train', aug=True)
         _, valloader = load_dataset(opt, split='val', aug=True)
     else:

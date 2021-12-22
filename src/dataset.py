@@ -97,13 +97,15 @@ class SenseiAugmentedDataset(torch.utils.data.Dataset):
         self.rob_thres = rob_threshold
 
     def __getitem__(self, idx):
-        sidx = self.non_rob_idx[idx]
-        (x, y), augmentor = self.dataset[sidx], self.augmentors[sidx]
-        x, *_ = augmentor(x, single=True)
-        return x, y
+        if self.is_robust[idx] is True:
+            return self.dataset[idx]
+        else:
+            (x, y), augmentor = self.dataset[idx], self.augmentors[idx]
+            x, *_ = augmentor(x, single=True)
+            return x, y
 
     def __len__(self):
-        return len(self.non_rob_idx)
+        return len(self.dataset)
 
     @torch.no_grad()
     def selective_augment(self, model, criterion, batch_size, device):
@@ -129,7 +131,6 @@ class SenseiAugmentedDataset(torch.utils.data.Dataset):
                 bloss = loss[i * augmentor.popsize : (i + 1) * augmentor.popsize]
                 augmentor.fitness(bloss, GeneticAugmentor.Fitness.LARGEST)
                 self.is_robust[idx] = True if torch.all(bloss.lt(self.rob_thres)) else False
-        self.non_rob_idx = [i for i, r in enumerate(self.is_robust) if r is False]
 
 
 def load_noisy_dataset(_, baseset, comm_trsf, noise_type, gblur_std=None):

@@ -24,9 +24,9 @@ devices = ['cpu', 'cuda']
 datasets = ['cifar10', 'cifar100']
 models = ['resnet32', 'mobilenetv2_x0_5', 'vgg13_bn', 'shufflenetv2_x1_0']
 noises = ['gaussion']
-crtmethods = ['patch', 'finetune', 'sensei']
+crtmethods = ['patch', 'finetune', 'sensei', 'none']
 fsmethods = ['featswap', 'perfloss', 'ratioestim']
-ptmethods = ['dc', 'dp', 'dp-s']
+ptmethods = ['NULL', 'DC', 'DP', 'DP-s']
 
 
 commparser = argparse.ArgumentParser(add_help=False)
@@ -41,6 +41,7 @@ commparser.add_argument('--seed', type=int, default=2021)
 data_group = commparser.add_argument_group('dataset')
 data_group.add_argument('-d', '--dataset', type=str, required=True, choices=datasets)
 data_group.add_argument('-n', '--noise_type', type=str, default='gaussion', choices=noises)
+data_group.add_argument('--num_neighbors', type=int, default=50)
 optim_group = commparser.add_argument_group('optimizer')
 optim_group.add_argument('--lr', type=float, default=0.01, help='learning rate')
 optim_group.add_argument('--momentum', type=float, default=0.9)
@@ -51,12 +52,10 @@ advparser = argparse.ArgumentParser(parents=[commparser])
 advparser.add_argument('-c', '--crt_method', type=str, required=True, choices=crtmethods)
 advparser.add_argument('-f', '--fs_method', type=str, default=None, required='patch' in sys.argv, choices=fsmethods)
 advparser.add_argument('-p', '--pt_method', type=str, default=None, required='patch' in sys.argv, choices=ptmethods)
-advparser.add_argument('--crt_type', type=str, choices=['crtunit', 'replace'])
 advparser.add_argument('--crt_epoch', type=int, default=20)
 advparser.add_argument('--susp_ratio', type=float, default=0.25)
 advparser.add_argument('--susp_side', type=str, default='front', choices=['front', 'rear', 'random'])
 advparser.add_argument('--robust_threshold', type=float, default=1e-3)
 advparser.add_argument('--popsize', type=int, default=10)
 advparser.add_argument('--crossover_prob', type=float, default=0.4)
-advparser.add_argument('--num_neighbors', type=int, default=50)
 

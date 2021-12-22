@@ -139,12 +139,17 @@ def switch_on_the_fly(opt, model, device):
     noisy_acc, _ = test(model, testloader, criterion, device)
     print('[info] the robustness accuracy is {:.4f}%'.format(noisy_acc))
 
+    _, spatialloader = load_dataset(opt, split='test', aug=True)
+    spatial_acc, _ = test(model, spatialloader, criterion, device)
+    print('[info] the spatial robustness accuracy is {:.4f}%'.format(spatial_acc))
+
     print('Saving model...')
     state = {
         'net': model.state_dict(),
         'std_acc': std_acc,
         'noisy_acc': noisy_acc,
-        'partial_noisy_acc': partial_noisy_acc
+        'partial_noisy_acc': partial_noisy_acc,
+        'spatial_acc': spatial_acc
     }
     torch.save(state, get_model_path(opt, state=f'switch_{opt.fs_method}_g{opt.gpu}'))
 

@@ -168,21 +168,11 @@ def load_noisy_dataset(_, baseset, comm_trsf, noise_type, gblur_std=None):
 def compute_mean_std(opt, dataset_name):
     entry = eval(f'torchvision.datasets.{dataset_name}')
     dataset = entry(root=opt.data_dir, train=True, download=False, transform=T.ToTensor())
-    loader = torch.utils.data.DataLoader(
-        dataset, batch_size=opt.batch_size, shuffle=False, num_workers=4
-    )
-    mean, std = 0., 0.
-    nb_samples = 0.
-    for data, _ in loader:
-        batch_samples = data.size(0)
-        data = data.view(batch_samples, data.size(1), -1)
-        mean += data.mean(2).sum(0)
-        std += data.std(2).sum(0)
-        nb_samples += batch_samples
-
-    mean /= nb_samples
-    std /= nb_samples
-
+    data_r = torch.stack([x[0, :, :] for x, _ in dataset])
+    data_g = torch.stack([x[1, :, :] for x, _ in dataset])
+    data_b = torch.stack([x[2, :, :] for x, _ in dataset])
+    mean = data_r.mean(), data_g.mean(), data_b.mean()
+    std = data_r.std(), data_g.std(), data_b.std()
     return mean, std
 
 

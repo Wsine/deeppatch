@@ -120,7 +120,8 @@ def switch_on_the_fly(opt, model, device):
     noise_mean = torch.cat(diff_list).mean()
 
     boundary = (std_mean + noise_mean) / 2
-    rgetattr(model, first_bn_name).boundary = boundary
+    decision_factor = 1.0
+    rgetattr(model, first_bn_name).boundary = boundary * decision_factor
     handle.remove()
 
     # Evaluate

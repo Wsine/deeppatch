@@ -207,7 +207,7 @@ def load_dataset(opt, split, noise=False, aug=False, **kwargs):
     # handle augmentation
     if aug is True:
         if split == 'train':
-            if opt.crt_method == 'sensei':
+            if opt.crt_method == 'sensei' or opt.pt_method == 'DP-SS':
                 dataset = SenseiAugmentedDataset(
                     dataset,
                     opt.robust_threshold, popsize=opt.popsize, crossover_prob=opt.crossover_prob

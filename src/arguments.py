@@ -26,7 +26,7 @@ models = ['resnet32', 'mobilenetv2_x0_5', 'vgg13_bn', 'shufflenetv2_x1_0']
 noises = ['gaussion']
 crtmethods = ['patch', 'finetune', 'sensei', 'none']
 fsmethods = ['featswap', 'perfloss', 'ratioestim']
-ptmethods = ['NULL', 'DC', 'DP', 'DP-s']
+ptmethods = ['NULL', 'DC', 'DP', 'DP-s', 'DP-SS']
 
 
 commparser = argparse.ArgumentParser(add_help=False)

@@ -142,6 +142,9 @@ def patch(opt, model, device):
     if opt.pt_method == 'DP-s':
         _, trainloader = load_dataset(opt, split='train', aug=True)
         _, valloader = load_dataset(opt, split='val', aug=True)
+    elif opt.pt_method == 'DP-SS':
+        trainset, _ = load_dataset(opt, split='train', aug=True)
+        _, valloader = load_dataset(opt, split='val', aug=True)
     else:
         _, trainloader = load_dataset(opt, split='train', noise=True, noise_type='random')
         _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
@@ -158,6 +161,7 @@ def patch(opt, model, device):
                 param.requires_grad = False
 
     criterion = torch.nn.CrossEntropyLoss()
+    sel_criterion = torch.nn.CrossEntropyLoss(reduction='none')
     optimizer = torch.optim.SGD(
         filter(lambda p: p.requires_grad, model.parameters()),
         lr=opt.lr, momentum=opt.momentum, weight_decay=opt.weight_decay
@@ -182,6 +186,11 @@ def patch(opt, model, device):
 
     for epoch in range(start_epoch + 1, opt.crt_epoch):
         print('Epoch: {}'.format(epoch))
+        if opt.pt_method == 'DP-SS':
+            trainset.selective_augment(model, sel_criterion, opt.batch_size, device)  # type: ignore
+            trainloader = torch.utils.data.DataLoader(
+                trainset, batch_size=opt.batch_size, shuffle=True, num_workers=4
+            )
         train(model, trainloader, optimizer, criterion, device)
         acc, *_ = test(model, valloader, criterion, device)
         if acc > best_acc:

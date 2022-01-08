@@ -13,17 +13,17 @@ from utils import *
 def evaluate(opt, model, device, eval_std=True, eval_noise=False, eval_spatial=False):
     criterion = torch.nn.CrossEntropyLoss()
 
-    if eval_std is True:
-        _, testloader = load_dataset(opt, split='test')
-        acc, _ = test(model, testloader, criterion, device)
-        print('[info] the base accuracy is {:.4f}%'.format(acc))
+    #  if eval_std is True:
+    #      _, testloader = load_dataset(opt, split='test')
+    #      acc, _ = test(model, testloader, criterion, device)
+    #      print('[info] the base accuracy is {:.4f}%'.format(acc))
 
     if eval_noise is True:
-        for std in [0.5, 1., 1.5, 2., 2.5, 3.]:
-            _, noiseloader = load_dataset(opt, split='test', noise=True,
-                                          noise_type='replace', gblur_std=std)
-            acc, _ = test(model, noiseloader, criterion, device)
-            print('[info] the robustness accuracy for std {:.1f} is {:.4f}%'.format(std, acc))
+        #  for std in [0.5, 1., 1.5, 2., 2.5, 3.]:
+        #      _, noiseloader = load_dataset(opt, split='test', noise=True,
+        #                                    noise_type='replace', gblur_std=std)
+        #      acc, _ = test(model, noiseloader, criterion, device)
+        #      print('[info] the robustness accuracy for std {:.1f} is {:.4f}%'.format(std, acc))
 
         _, noiseloader = load_dataset(opt, split='test', noise=True, noise_type='append')
         acc, _ = test(model, noiseloader, criterion, device)
@@ -62,7 +62,8 @@ def main():
     elif opt.crt_method == 'patch':  # deeppatch and deepcorrect
         model = load_model(opt, pretrained=False)
         model = construct_model(opt, model).to(device)
-        ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_g{opt.gpu}'))
+        #  ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_g{opt.gpu}'))
+        ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_g{opt.gpu}_f{int(opt.susp_ratio * 100)}'))
         model.load_state_dict(ckp['net'])
         if opt.pt_method == 'DP-s':
             evaluate(opt, model, device, eval_spatial=True)

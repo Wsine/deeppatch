@@ -203,7 +203,8 @@ def patch(opt, model, device):
                 'acc': acc,
                 'indices': extract_indices(model)
             }
-            torch.save(state, get_model_path(opt, state=f'patch_{opt.fs_method}_g{opt.gpu}'))
+            #  torch.save(state, get_model_path(opt, state=f'patch_{opt.fs_method}_g{opt.gpu}'))
+            torch.save(state, get_model_path(opt, state=f'patch_{opt.fs_method}_g{opt.gpu}_f{int(opt.susp_ratio * 100)}'))
             best_acc = acc
         scheduler.step()
     print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))

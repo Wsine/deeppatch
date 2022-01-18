@@ -7,7 +7,7 @@ import torch.utils.data
 import torch.nn as nn
 import torch.nn.functional as F
 
-from model import load_model
+from model import load_model, resume_model
 from dataset import load_dataset
 from arguments import advparser as parser
 from train import train, test
@@ -119,7 +119,7 @@ def construct_model(opt, model, patch=True):
             correct_module = NoneCorrect(module, indices)
         elif opt.pt_method == 'DC':
             correct_module = ConcatCorrect(module, indices)
-        elif opt.pt_method.startswith('DP'):
+        elif 'DP' in opt.pt_method:
             correct_module = ReplaceCorrect(module, indices)
         else:
             raise ValueError('Invalid correct type')
@@ -145,6 +145,10 @@ def patch(opt, model, device):
     elif opt.pt_method == 'DP-SS':
         trainset, _ = load_dataset(opt, split='train', aug=True)
         _, valloader = load_dataset(opt, split='val', aug=True)
+    elif opt.pt_method == 'SS-DP':
+        _, trainloader = load_dataset(opt, split='train')
+        _, valloader = load_dataset(opt, split='val')
+        model = resume_model(opt, model, state=f'sensei_base')
     else:
         _, trainloader = load_dataset(opt, split='train', noise=True, noise_type='random')
         _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')

@@ -4,20 +4,13 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-numpy = "*"
 torch = "==1.8.1"
 torchvision = "==0.9.1"
+numpy = "*"
 tqdm = "*"
 sklearn = "*"
-# pandas = "*"
-# pillow = ">=8.3.2"
+
+[dev-packages]
 
 [requires]
-python_version = "3.6"
-
-[scripts]
-pretrain = "python src/eval.py    -m resnet32 -d cifar10"
-assess   = "python src/select.py  -m resnet32 -d cifar10 -f perfloss"
-correct  = "python src/correct.py -m resnet32 -d cifar10 -f perfloss -c patch --crt_type replace"
-evaluate = "python src/switch.py  -m resent32 -d cifar10 -f perfloss -c patch --crt_type replace"
-
+python_version = "3.8"

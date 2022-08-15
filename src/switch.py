@@ -110,13 +110,15 @@ def switch_on_the_fly(opt, model, device):
             break
 
     criterion = torch.nn.CrossEntropyLoss()
-    _, valloader = load_dataset(opt, split='val', noise=False)
+    _, valloader = load_dataset(opt, split='val')
     test(model, valloader, criterion, device, desc='Calibrate')
     std_mean = torch.cat(diff_list).mean()
 
     diff_list.clear()
-    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='expand')
-    test(model, valloader, criterion, device, desc='Calibrate')
+    # _, valloader = load_dataset(opt, split='val', noise=True, noise_type='expand')
+    # test(model, valloader, criterion, device, desc='Calibrate')
+    _, spatialloader = load_dataset(opt, split='val', aug=True)
+    test(model, spatialloader, criterion, device, desc='Calibrate')
     noise_mean = torch.cat(diff_list).mean()
 
     boundary = (std_mean + noise_mean) / 2
@@ -125,34 +127,39 @@ def switch_on_the_fly(opt, model, device):
     handle.remove()
 
     # Evaluate
-    _, testloader = load_dataset(opt, split='test', noise=False)
+    _, testloader = load_dataset(opt, split='test')
     std_acc, _ = test(model, testloader, criterion, device)
     print('[info] the normal accuracy is {:.4f}%'.format(std_acc))
 
-    partial_noisy_acc = []
-    for std in [0.5, 1., 1.5, 2., 2.5, 3.]:
-        _, testloader = load_dataset(opt, split='test', noise=True, noise_type='replace', gblur_std=std)
-        acc, _ = test(model, testloader, criterion, device)
-        print('[info] the robustness accuracy for std {:.1f} is {:.4f}%'.format(std, acc))
-        partial_noisy_acc.append(acc)
+    # partial_noisy_acc = []
+    # for std in [0.5, 1., 1.5, 2., 2.5, 3.]:
+    #     _, testloader = load_dataset(opt, split='test', noise=True, noise_type='replace', gblur_std=std)
+    #     acc, _ = test(model, testloader, criterion, device)
+    #     print('[info] the robustness accuracy for std {:.1f} is {:.4f}%'.format(std, acc))
+    #     partial_noisy_acc.append(acc)
 
-    _, testloader = load_dataset(opt, split='test', noise=True, noise_type='append')
-    noisy_acc, _ = test(model, testloader, criterion, device)
-    print('[info] the robustness accuracy is {:.4f}%'.format(noisy_acc))
+    # _, testloader = load_dataset(opt, split='test', noise=True, noise_type='append')
+    # noisy_acc, _ = test(model, testloader, criterion, device)
+    # print('[info] the robustness accuracy is {:.4f}%'.format(noisy_acc))
 
     _, spatialloader = load_dataset(opt, split='test', aug=True)
     spatial_acc, _ = test(model, spatialloader, criterion, device)
     print('[info] the spatial robustness accuracy is {:.4f}%'.format(spatial_acc))
 
-    print('Saving model...')
-    state = {
-        'net': model.state_dict(),
-        'std_acc': std_acc,
-        'noisy_acc': noisy_acc,
-        'partial_noisy_acc': partial_noisy_acc,
-        'spatial_acc': spatial_acc
-    }
-    torch.save(state, get_model_path(opt, state=f'switch_{opt.fs_method}_g{opt.gpu}'))
+    for srange in [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5)]:
+        _, spatialloader = load_dataset(opt, split='test', aug=True, sub_range=srange)
+        acc, _ = test(model, spatialloader, criterion, device)
+        print('[info] the spatial robustness accuracy for sub-range {}/{} is {:.4f}%'.format(srange[0], srange[1], acc))
+
+    # print('Saving model...')
+    # state = {
+    #     'net': model.state_dict(),
+    #     'std_acc': std_acc,
+    #     'noisy_acc': noisy_acc,
+    #     'partial_noisy_acc': partial_noisy_acc,
+    #     'spatial_acc': spatial_acc
+    # }
+    # torch.save(state, get_model_path(opt, state=f'switch_{opt.fs_method}_g{opt.gpu}'))
 
 
 def main():

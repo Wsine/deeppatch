@@ -10,7 +10,7 @@ import torchvision.transforms.functional as TF
 class Transformation(object):
     def __init__(
             self, range_boundary, range_step, mutate_step,
-            center_point=0, shape=None, rand_init=True):
+            center_point=0, shape=None, rand_init=True, sub_range=None):
         self.mutate_step = mutate_step
 
         if isinstance(range_boundary, str):
@@ -19,7 +19,16 @@ class Transformation(object):
 
         rmin = center_point - range_boundary
         rmax = center_point + range_boundary + 1e-5
-        self.range = np.arange(rmin, rmax, range_step)
+        if sub_range is None:
+            self.range = np.arange(rmin, rmax, range_step)
+        else:
+            assert type(sub_range) is tuple and type(sub_range[0]) is int
+            l_rmin = center_point - range_boundary * (sub_range[0] / sub_range[1])
+            l_rmax = center_point - range_boundary * ((sub_range[0] - 1) / sub_range[1]) + 1e-5
+            r_rmin = center_point + range_boundary * ((sub_range[0] - 1) / sub_range[1])
+            r_rmax = center_point + range_boundary * (sub_range[0] / sub_range[1]) + 1e-5
+            range_step /= sub_range[1]
+            self.range = np.concatenate((np.arange(l_rmin, l_rmax, range_step), np.arange(r_rmin, r_rmax, range_step)))
 
         self.value = random.choice(self.range) if rand_init is True else center_point
 
@@ -136,8 +145,8 @@ class GeneticAugmentor(object):
 
 
 class NeighborAugmentor(object):
-    def __init__(self, image_shape, num_neighbors, seed):
-        self.chromo = Chromosome(image_shape, rand_init=False)
+    def __init__(self, image_shape, num_neighbors, seed, **kwargs):
+        self.chromo = Chromosome(image_shape, rand_init=False, **kwargs)
         self.neighbors, self.accu_nhb, self.n2t = self._init_neighbors(num_neighbors, seed)
 
     def _init_neighbors(self, num_neighbors, seed):

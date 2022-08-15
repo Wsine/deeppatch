@@ -30,6 +30,11 @@ def evaluate(opt, model, device, eval_std=True, eval_noise=False, eval_spatial=F
         print('[info] the noise robustness accuracy is {:.4f}%'.format(acc))
 
     if eval_spatial is True:
+        for srange in [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5)]:
+            _, spatialloader = load_dataset(opt, split='test', aug=True, sub_range=srange)
+            acc, _ = test(model, spatialloader, criterion, device)
+            print('[info] the spatial robustness accuracy for sub-range {}/{} is {:.4f}%'.format(srange[0], srange[1], acc))
+
         _, spatialloader = load_dataset(opt, split='test', aug=True)
         acc, _ = test(model, spatialloader, criterion, device)
         print('[info] the spatial robustness accuracy is {:.4f}%'.format(acc))
@@ -58,7 +63,7 @@ def main():
                 evaluate(opt, model2, device, eval_std=False, eval_noise=True)
         else:
             model = load_model(opt, pretrained=True).to(device)
-            evaluate(opt, model, device)
+            evaluate(opt, model, device, eval_spatial=True)
     elif opt.crt_method == 'patch':  # deeppatch and deepcorrect
         model = load_model(opt, pretrained=False)
         model = construct_model(opt, model).to(device)

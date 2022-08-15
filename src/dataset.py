@@ -216,7 +216,7 @@ def load_dataset(opt, split, noise=False, aug=False, **kwargs):
             else:
                 dataset = RandomAugmentedDataset(dataset)
         else:
-            dataset = NeighborAugmentedDataset(dataset, opt.num_neighbors, seed=opt.seed)
+            dataset = NeighborAugmentedDataset(dataset, opt.num_neighbors, seed=opt.seed, **kwargs)
 
     # handle data loader
     shuffle = True if split == 'train' else False

@@ -1,11 +1,13 @@
 import os
 import json
 import random
+import copy
 
 import torch
 import torch.utils.data
 import torch.nn as nn
 import torch.nn.functional as F
+from tqdm import tqdm
 
 from model import load_model, resume_model
 from dataset import load_dataset
@@ -284,6 +286,165 @@ def sensei(opt, model, device):
             best_acc = acc
         scheduler.step()
     print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))
+
+
+@dispatcher.register('apricot')
+def apricot(opt, model, device):
+    guard_folder(opt, folder='apricot')
+
+    trainset, trainloader = load_dataset(opt, split='train', noise=True, noise_type='random')
+    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+
+    # create rDLMs
+    NUM_SUBMODELS = 20
+    SUBSET_SIZE = 10000
+    SUBMODEL_EPOCHS = 40
+    subset_step = int((len(trainset) - SUBSET_SIZE) // NUM_SUBMODELS)
+
+    for sub_idx in tqdm(range(NUM_SUBMODELS), desc='rDLMs'):
+        submodel_path = get_model_path(opt, folder='apricot', state=f'sub_{sub_idx}')
+        if os.path.exists(submodel_path):
+            continue
+
+        subset_indices = list(range(subset_step * sub_idx, subset_step * sub_idx + SUBSET_SIZE))
+        subset = torch.utils.data.Subset(trainset, subset_indices)
+        subloader = torch.utils.data.DataLoader(
+            subset, batch_size=opt.batch_size, shuffle=True, num_workers=4
+        )
+
+        submodel = copy.deepcopy(model).to(device)
+
+        criterion = torch.nn.CrossEntropyLoss()
+        optimizer = torch.optim.SGD(
+            submodel.parameters(),
+            lr=opt.lr, momentum=opt.momentum, weight_decay=opt.weight_decay
+        )
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+
+        best_acc, *_ = test(submodel, valloader, criterion, device, desc='Baseline')
+        for epoch in tqdm(range(0, SUBMODEL_EPOCHS), desc='epochs'):
+            train(submodel, subloader, optimizer, criterion, device)
+            acc, *_ = test(submodel, valloader, criterion, device)
+            if acc > best_acc:
+                print('Saving...')
+                state = {
+                    'cepoch': epoch,
+                    'net': submodel.state_dict(),
+                    'optim': optimizer.state_dict(),
+                    'sched': scheduler.state_dict(),
+                    'acc': acc
+                }
+                torch.save(state, submodel_path)
+                best_acc = acc
+            scheduler.step()
+        print('[info] the best submodel accuracy is {:.4f}%'.format(best_acc))
+
+    # submodels
+    sm_equals_path = get_model_path(opt, folder='apricot', state='sub_pred_equals')
+
+    if not os.path.exists(sm_equals_path):
+        submodel = copy.deepcopy(model).to(device).eval()
+        seqloader = torch.utils.data.DataLoader(
+            trainset, batch_size=opt.batch_size, shuffle=False, num_workers=4
+        )
+        submodels_equals = []
+        for sub_idx in tqdm(range(NUM_SUBMODELS), desc='subModelPreds'):
+            submodel_path = get_model_path(opt, folder='apricot', state=f'sub_{sub_idx}')
+            state = torch.load(submodel_path)
+            submodel.load_state_dict(state['net'])
+
+            equals = []
+            for inputs, targets in tqdm(seqloader, desc='Batch', leave=False):
+                inputs, targets = inputs.to(device), targets.to(device)
+                with torch.no_grad():
+                    outputs = submodel(inputs)
+                _, predicted = outputs.max(1)
+                eqs = predicted.eq(targets).flatten()
+                equals.append(eqs)
+            equals = torch.cat(equals)
+
+            submodels_equals.append(equals)
+        submodels_equals = torch.stack(submodels_equals)
+        torch.save(submodels_equals, sm_equals_path)
+    else:
+        submodels_equals = torch.load(sm_equals_path)
+
+    # Fixing process
+    NUM_LOOP_COUNT = 3
+    BATCH_SIZE = 20
+    LEARNING_RATE = 0.001
+
+    model = model.to(device)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(
+        model.parameters(),
+        lr=opt.lr, momentum=opt.momentum, weight_decay=opt.weight_decay
+    )
+    best_acc, *_ = test(model, valloader, criterion, device)
+    best_weights = copy.deepcopy(model.state_dict())
+
+    submodel_weights = []
+    for sub_idx in range(NUM_SUBMODELS):
+        submodel_path = get_model_path(opt, folder='apricot', state=f'sub_{sub_idx}')
+        state = torch.load(submodel_path)
+        submodel_weights.append(state['net'])
+
+    for loop_idx in range(NUM_LOOP_COUNT):
+        print('Loop: {}'.format(loop_idx))
+        sampler = torch.utils.data.BatchSampler(
+            torch.utils.data.RandomSampler(range(len(trainset))),
+            batch_size=BATCH_SIZE, drop_last=False
+        )
+        for indices in tqdm(sampler, desc='Sampler'):
+            model.eval()
+            base_weights = copy.deepcopy(model.state_dict())
+
+            inputs = torch.stack([trainset[ind][0] for ind in indices]).to(device)
+            targets = torch.tensor([trainset[ind][1] for ind in indices]).to(device)
+
+            with torch.no_grad():
+                outputs = model(inputs)
+                _, predicted = outputs.max(1)
+                equals = predicted.eq(targets).flatten()
+
+            for ind, equal in zip(indices, equals):
+                if equal:
+                    continue
+                correct_submodels = [
+                    submodel_weights[i] for i in range(NUM_SUBMODELS)
+                    if submodels_equals[i][ind]
+                ]
+                if len(correct_submodels) == 0:
+                    continue
+
+                # use strategy 2
+                for key in base_weights.keys():
+                    if 'num_batches_tracked' in key:
+                        continue
+                    correct_weight = torch.mean(
+                        torch.stack([m[key] for m in correct_submodels]), dim=0)
+                    correct_diff = base_weights[key] - correct_weight
+                    p_corr = len(correct_submodels) / NUM_SUBMODELS  # proportion
+                    base_weights[key] = base_weights[key] + LEARNING_RATE * p_corr * correct_diff
+
+            model.load_state_dict(base_weights)
+            acc, *_ = test(model, valloader, criterion, device, desc='Eval')
+            if acc > best_acc:
+                best_weights = copy.deepcopy(base_weights)
+                torch.save({'net': best_weights}, get_model_path(opt, state='apricot'))
+                best_acc = acc
+
+            train(model, trainloader, optimizer, criterion, device)
+            acc, *_ = test(model, valloader, criterion, device, desc='Eval')
+            if acc > best_acc:
+                best_weights = copy.deepcopy(base_weights)
+                torch.save({'net': best_weights}, get_model_path(opt, state='apricot'))
+                best_acc = acc
+
+            model.load_state_dict(best_weights)
+
+        # violate the original
+        break
 
 
 def main():

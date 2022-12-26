@@ -577,6 +577,84 @@ def deepgini(opt, model, device):
     print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))
 
 
+
+def augmix_train(net, train_loader, optimizer, scheduler, device, no_jsd=False):
+    """Train for one epoch."""
+    net.train()
+    loss_ema = 0.
+    for images, targets in tqdm(train_loader, desc='Train'):
+        optimizer.zero_grad()
+
+        if no_jsd:
+            images = images.to(device)
+            targets = targets.to(device)
+            logits = net(images)
+            loss = F.cross_entropy(logits, targets)
+        else:
+            images_all = torch.cat(images, 0).to(device)
+            targets = targets.to(device)
+            logits_all = net(images_all)
+            logits_clean, logits_aug1, logits_aug2 = torch.split(
+                logits_all, images[0].size(0))
+
+            # Cross-entropy is only computed on clean images
+            loss = F.cross_entropy(logits_clean, targets)
+
+            p_clean, p_aug1, p_aug2 = F.softmax(
+                logits_clean, dim=1), F.softmax(
+                    logits_aug1, dim=1), F.softmax(
+                        logits_aug2, dim=1)
+
+            # Clamp mixture distribution to avoid exploding KL divergence
+            p_mixture = torch.clamp((p_clean + p_aug1 + p_aug2) / 3., 1e-7, 1).log()
+            loss += 12 * (F.kl_div(p_mixture, p_clean, reduction='batchmean') +
+                          F.kl_div(p_mixture, p_aug1, reduction='batchmean') +
+                          F.kl_div(p_mixture, p_aug2, reduction='batchmean')) / 3.
+
+        loss.backward()
+        optimizer.step()
+        scheduler.step()
+        loss_ema = loss_ema * 0.9 + float(loss) * 0.1
+
+    return loss_ema
+
+
+@dispatcher.register('augmix')
+def augmix(opt, model, device):
+    _, trainloader = load_dataset(opt, split='train', mix=True)
+    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+
+    model = model.to(device)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(
+        model.parameters(),
+        lr=opt.lr, momentum=opt.momentum, weight_decay=opt.weight_decay, nesterov=True
+    )
+    total_steps = opt.crt_epoch * len(trainloader)  # type: ignore
+    lr_max, lr_min = 1, 1e-6 / opt.lr
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer, lr_lambda=lambda step: lr_min + (lr_max - lr_min) * 0.5 * (1 + np.cos(step / total_steps * np.pi))
+    )
+
+    best_acc, *_ = test(model, valloader, criterion, device, desc='Baseline')
+    for epoch in range(0, opt.crt_epoch):
+        print('Epoch: {}'.format(epoch))
+        augmix_train(model, trainloader, optimizer, scheduler, device, no_jsd=False)
+        acc, *_ = test(model, valloader, criterion, device)
+        if acc > best_acc:
+            print('Saving...')
+            state = {
+                'cepoch': epoch,
+                'net': model.state_dict(),
+                'optim': optimizer.state_dict(),
+                'sched': scheduler.state_dict(),
+                'acc': acc
+            }
+            torch.save(state, get_model_path(opt, state='augmix'))
+            best_acc = acc
+    print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))
+
+
 def main():
     opt = parser.parse_args()
     print(opt)

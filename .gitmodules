@@ -1,0 +1,3 @@
+[submodule "vendor/augmix"]
+	path = vendor/augmix
+	url = https://github.com/google-research/augmix.git

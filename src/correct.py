@@ -518,6 +518,65 @@ def robot(opt, model, device):
     print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))
 
 
+@dispatcher.register('gini')
+def deepgini(opt, model, device):
+    trainset, _ = load_dataset(opt, split='train', noise=True, noise_type='random')
+    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+
+    model = model.to(device).eval()
+    criterion = torch.nn.CrossEntropyLoss()
+
+    # compute gini index
+    seqloader = torch.utils.data.DataLoader(
+        trainset, batch_size=opt.batch_size, shuffle=False, num_workers=4
+    )
+    ginis = []
+    for inputs, targets in tqdm(seqloader, desc='Gini'):
+        inputs, targets = inputs.to(device), targets.to(device)
+
+        with torch.no_grad():
+            outputs = model(inputs)
+
+        probs = F.softmax(outputs, dim=1)
+        gini = probs.square().sum(dim=1).mul(-1.).add(1.)
+        ginis.append(gini.detach().cpu())
+    ginis = torch.cat(ginis)
+
+    indices = torch.argsort(ginis, descending=True)
+    train_size = int(len(trainset) * 0.1)
+    sel_indices = indices[:train_size]
+    seqloader = torch.utils.data.DataLoader(
+        torch.utils.data.Subset(trainset, sel_indices.tolist()),
+        batch_size=opt.batch_size, shuffle=True, num_workers=4
+    )
+
+    optimizer = torch.optim.SGD(
+        model.parameters(),
+        lr=opt.lr, momentum=opt.momentum, weight_decay=opt.weight_decay
+    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+
+    RETRAIN_EPOCHS = 40
+    best_acc, *_ = test(model, valloader, criterion, device, desc='Baseline')
+    for epoch in range(0, RETRAIN_EPOCHS):
+        print('Epoch: {}'.format(epoch))
+        train(model, seqloader, optimizer, criterion, device)
+        acc, *_ = test(model, valloader, criterion, device)
+        if acc > best_acc:
+            print('Saving...')
+            state = {
+                'cepoch': epoch,
+                'net': model.state_dict(),
+                'optim': optimizer.state_dict(),
+                'sched': scheduler.state_dict(),
+                'acc': acc
+            }
+            torch.save(state, get_model_path(opt, state='gini'))
+            best_acc = acc
+        scheduler.step()
+    print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))
+
+
 def main():
     opt = parser.parse_args()
     print(opt)

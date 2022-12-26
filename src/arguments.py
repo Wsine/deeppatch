@@ -24,7 +24,7 @@ devices = ['cpu', 'cuda']
 datasets = ['cifar10', 'cifar100']
 models = ['resnet32', 'mobilenetv2_x0_5', 'vgg13_bn', 'shufflenetv2_x1_0']
 noises = ['gaussion']
-crtmethods = ['patch', 'finetune', 'sensei', 'apricot', 'none']
+crtmethods = ['patch', 'finetune', 'sensei', 'apricot', 'robot', 'none']
 fsmethods = ['featswap', 'perfloss', 'ratioestim']
 ptmethods = ['NULL', 'DC', 'DP', 'DP-s', 'DP-SS', 'SS-DP']
 

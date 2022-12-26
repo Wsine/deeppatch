@@ -3,6 +3,7 @@ import json
 import random
 import copy
 
+import numpy as np
 import torch
 import torch.utils.data
 import torch.nn as nn
@@ -445,6 +446,76 @@ def apricot(opt, model, device):
 
         # violate the original
         break
+
+
+@dispatcher.register('robot')
+def robot(opt, model, device):
+    trainset, _ = load_dataset(opt, split='train', noise=True, noise_type='random')
+    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+
+    model = model.to(device).eval()
+    criterion = torch.nn.CrossEntropyLoss()
+
+    # compute FOL
+    ROBOT_ELLIPSIS = 0.01
+
+    seqloader = torch.utils.data.DataLoader(
+        trainset, batch_size=opt.batch_size, shuffle=False, num_workers=4
+    )
+    fols = []
+    for inputs, targets in tqdm(seqloader, desc='FOL'):
+        cur_batch_size = targets.size(0)
+
+        with torch.enable_grad():
+            grad_inputs = inputs.clone().detach()
+            grad_inputs, targets = grad_inputs.to(device), targets.to(device)
+            grad_inputs.requires_grad = True
+            model.zero_grad()
+            outputs = model(grad_inputs)
+            loss = criterion(outputs, targets)
+            loss.backward()
+
+        grads_flat = grad_inputs.grad.cpu().numpy().reshape(cur_batch_size, -1)
+        grads_norm = np.linalg.norm(grads_flat, ord=1, axis=1)
+        grads_diff = grads_flat - inputs.numpy().reshape(cur_batch_size, -1)
+        i_fols = -1. * (grads_flat * grads_diff).sum(axis=1) + ROBOT_ELLIPSIS * grads_norm
+        fols.append(i_fols)
+    fols = np.concatenate(fols)
+
+    SELECTED_NUM = 10000
+    indices = np.argsort(fols)
+    sel_indices = np.concatenate((indices[:SELECTED_NUM//2], indices[-SELECTED_NUM//2:]))
+    print(sel_indices)
+    seqloader = torch.utils.data.DataLoader(
+        torch.utils.data.Subset(trainset, sel_indices.tolist()),
+        batch_size=opt.batch_size, shuffle=True, num_workers=4
+    )
+
+    optimizer = torch.optim.SGD(
+        model.parameters(),
+        lr=opt.lr, momentum=opt.momentum, weight_decay=opt.weight_decay
+    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+
+    RETRAIN_EPOCHS = 40
+    best_acc, *_ = test(model, valloader, criterion, device, desc='Baseline')
+    for epoch in range(0, RETRAIN_EPOCHS):
+        print('Epoch: {}'.format(epoch))
+        train(model, seqloader, optimizer, criterion, device)
+        acc, *_ = test(model, valloader, criterion, device)
+        if acc > best_acc:
+            print('Saving...')
+            state = {
+                'cepoch': epoch,
+                'net': model.state_dict(),
+                'optim': optimizer.state_dict(),
+                'sched': scheduler.state_dict(),
+                'acc': acc
+            }
+            torch.save(state, get_model_path(opt, state='robot'))
+            best_acc = acc
+        scheduler.step()
+    print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))
 
 
 def main():

@@ -400,7 +400,7 @@ def apricot(opt, model, device):
             model.eval()
             base_weights = copy.deepcopy(model.state_dict())
 
-            inputs = torch.stack([trainset[ind][0] for ind in indices]).to(device)
+            inputs = torch.stack([trainset[ind][0] for ind in indices]).to(device)  # type: ignore
             targets = torch.tensor([trainset[ind][1] for ind in indices]).to(device)
 
             with torch.no_grad():
@@ -424,7 +424,7 @@ def apricot(opt, model, device):
                         continue
                     correct_weight = torch.mean(
                         torch.stack([m[key] for m in correct_submodels]), dim=0)
-                    correct_diff = base_weights[key] - correct_weight
+                    correct_diff = base_weights[key] - correct_weight.to(device)
                     p_corr = len(correct_submodels) / NUM_SUBMODELS  # proportion
                     base_weights[key] = base_weights[key] + LEARNING_RATE * p_corr * correct_diff
 

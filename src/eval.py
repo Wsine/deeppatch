@@ -73,16 +73,16 @@ def main():
             evaluate(opt, model, device, eval_spatial=True)
         else:
             evaluate(opt, model, device, eval_noise=True)
-    elif opt.crt_method == 'finetune':
-        model = load_model(opt, pretrained=False).to(device)
-        ckp = torch.load(get_model_path(opt, state=f'{opt.crt_method}_g{opt.gpu}'))
-        model.load_state_dict(ckp['net'])
-        evaluate(opt, model, device, eval_noise=True)
     elif opt.crt_method == 'sensei':
         model = load_model(opt, pretrained=False).to(device)
         ckp = torch.load(get_model_path(opt, state=f'{opt.crt_method}_g{opt.gpu}'))
         model.load_state_dict(ckp['net'])
         evaluate(opt, model, device, eval_spatial=True)
+    elif opt.crt_method in ('finetune', 'apricot', 'robot', 'augmix', 'gini'):
+        model = load_model(opt, pretrained=False).to(device)
+        ckp = torch.load(get_model_path(opt, state=f'{opt.crt_method}'))
+        model.load_state_dict(ckp['net'])
+        evaluate(opt, model, device, eval_noise=True)
     else:
         print('Please check input parameters manually')
 

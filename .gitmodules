@@ -1,3 +1,6 @@
 [submodule "vendor/augmix"]
 	path = vendor/augmix
 	url = https://github.com/google-research/augmix.git
+[submodule "vendor/playground"]
+	path = vendor/playground
+	url = https://github.com/aaron-xichen/pytorch-playground.git

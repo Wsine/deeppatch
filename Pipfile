@@ -9,6 +9,8 @@ torchvision = "==0.9.1"
 numpy = "*"
 tqdm = "*"
 sklearn = "*"
+opencv-python = "*"
+ipython = "*"
 
 [dev-packages]
 

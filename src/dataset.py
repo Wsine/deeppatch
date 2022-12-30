@@ -9,6 +9,7 @@ import torchvision.transforms as T
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 
+from tinyimagenet import TinyImageNetDataset
 from augmentor import GeneticAugmentor, NeighborAugmentor, RandomAugmentor
 from vendor.augmix import augmentations
 from utils import cache_object
@@ -237,26 +238,43 @@ def compute_mean_std(opt, dataset_name):
 
 
 def load_dataset(opt, split, noise=False, aug=False, mix=False, **kwargs):
-    assert opt.dataset.upper() in dir(torchvision.datasets)
-    entry = eval(f'torchvision.datasets.{opt.dataset.upper()}')
+    if opt.dataset == 'tinyimagenet':
+        entry = TinyImageNetDataset
+        # there are no labels in test split
+        extra_args = {'mode': 'train' if split == 'train' else 'val'}
+        common_transformers = [T.ToTensor()]
+        stratify = 'targets'
+    elif opt.dataset == 'svhn':
+        entry = torchvision.datasets.SVHN
+        extra_args = {
+            'split': 'test' if split == 'test' else 'train',
+            'target_transform': lambda t: (10 if t == 0 else t) - 1
+        }
+        mean = std = (0.5, 0.5, 0.5)
+        common_transformers = [T.ToTensor(), T.Normalize(mean, std)]
+        stratify = 'labels'
+    else:  # cifar10 / cifar100
+        entry = eval(f'torchvision.datasets.{opt.dataset.upper()}')
+        extra_args = {'train': False if split == 'test' else True}
+        mean, std = compute_mean_std(opt, opt.dataset.upper())
+        common_transformers = [T.ToTensor(), T.Normalize(mean, std)]
+        stratify = 'targets'
 
     # handle split
     if split == 'test':
-        base_dataset = entry(root=opt.data_dir, train=False, download=True)
+        base_dataset = entry(root=opt.data_dir, download=True, **extra_args)
     elif split == 'val':
-        base_largeset = entry(root=opt.data_dir, train=True, download=True)
+        base_largeset = entry(root=opt.data_dir, download=True, **extra_args)
         _, base_dataset = train_test_split(
-            base_largeset, test_size=1./50, random_state=opt.seed, stratify=base_largeset.targets)
+            base_largeset, test_size=1./50, random_state=opt.seed, stratify=getattr(base_largeset, stratify))
     elif split == 'train':
-        base_largeset = entry(root=opt.data_dir, train=True, download=True)
+        base_largeset = entry(root=opt.data_dir, download=True, **extra_args)
         base_dataset, _ = train_test_split(
-            base_largeset, test_size=1./50, random_state=opt.seed, stratify=base_largeset.targets)
+            base_largeset, test_size=1./50, random_state=opt.seed, stratify=getattr(base_largeset, stratify))
     else:
         raise ValueError('Invalid parameter of split')
 
-    # handle noise
-    mean, std = compute_mean_std(opt, opt.dataset.upper())
-    common_transformers = [T.ToTensor(), T.Normalize(mean, std)]
+    # handle noise/mix
     if noise is True:
         dataset = load_noisy_dataset(opt, base_dataset, common_transformers, **kwargs)
     elif mix is True:

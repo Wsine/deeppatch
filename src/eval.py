@@ -63,7 +63,7 @@ def main():
                 evaluate(opt, model2, device, eval_std=False, eval_noise=True)
         else:
             model = load_model(opt, pretrained=True).to(device)
-            evaluate(opt, model, device, eval_spatial=False)
+            evaluate(opt, model, device, eval_spatial=True, eval_noise=True)
     elif opt.crt_method == 'patch':  # deeppatch and deepcorrect
         model = load_model(opt, pretrained=False)
         model = construct_model(opt, model).to(device)

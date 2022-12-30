@@ -293,8 +293,10 @@ def sensei(opt, model, device):
 def apricot(opt, model, device):
     guard_folder(opt, folder='apricot')
 
-    trainset, trainloader = load_dataset(opt, split='train', noise=True, noise_type='random')
-    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+    # trainset, trainloader = load_dataset(opt, split='train', noise=True, noise_type='random')
+    # _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+    trainset, trainloader = load_dataset(opt, split='train', aug=True)
+    _, valloader = load_dataset(opt, split='val', aug=True)
 
     # create rDLMs
     NUM_SUBMODELS = 20
@@ -450,8 +452,10 @@ def apricot(opt, model, device):
 
 @dispatcher.register('robot')
 def robot(opt, model, device):
-    trainset, _ = load_dataset(opt, split='train', noise=True, noise_type='random')
-    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+    # trainset, _ = load_dataset(opt, split='train', noise=True, noise_type='random')
+    # _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+    trainset, _ = load_dataset(opt, split='train', aug=True)
+    _, valloader = load_dataset(opt, split='val', aug=True)
 
     model = model.to(device).eval()
     criterion = torch.nn.CrossEntropyLoss()
@@ -520,8 +524,10 @@ def robot(opt, model, device):
 
 @dispatcher.register('gini')
 def deepgini(opt, model, device):
-    trainset, _ = load_dataset(opt, split='train', noise=True, noise_type='random')
-    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+    # trainset, _ = load_dataset(opt, split='train', noise=True, noise_type='random')
+    # _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+    trainset, _ = load_dataset(opt, split='train', aug=True)
+    _, valloader = load_dataset(opt, split='val', aug=True)
 
     model = model.to(device).eval()
     criterion = torch.nn.CrossEntropyLoss()
@@ -622,7 +628,8 @@ def augmix_train(net, train_loader, optimizer, scheduler, device, no_jsd=False):
 @dispatcher.register('augmix')
 def augmix(opt, model, device):
     _, trainloader = load_dataset(opt, split='train', mix=True)
-    _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+    # _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+    _, valloader = load_dataset(opt, split='val', aug=True)
 
     model = model.to(device)
     criterion = torch.nn.CrossEntropyLoss()

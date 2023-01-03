@@ -67,7 +67,8 @@ def main():
     elif opt.crt_method == 'patch':  # deeppatch and deepcorrect
         model = load_model(opt, pretrained=False)
         model = construct_model(opt, model).to(device)
-        ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_g{opt.gpu}'))
+        ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}'))
+        # ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_finetune'))
         model.load_state_dict(ckp['net'])
         if opt.pt_method == 'DP-s':
             evaluate(opt, model, device, eval_spatial=True)
@@ -75,7 +76,7 @@ def main():
             evaluate(opt, model, device, eval_noise=True)
     elif opt.crt_method == 'sensei':
         model = load_model(opt, pretrained=False).to(device)
-        ckp = torch.load(get_model_path(opt, state=f'{opt.crt_method}_g{opt.gpu}'))
+        ckp = torch.load(get_model_path(opt, state=f'{opt.crt_method}'))
         model.load_state_dict(ckp['net'])
         evaluate(opt, model, device, eval_spatial=True)
     elif opt.crt_method in ('finetune', 'apricot', 'robot', 'augmix', 'gini'):

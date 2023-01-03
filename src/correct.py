@@ -171,13 +171,14 @@ def patch(opt, model, device):
     sel_criterion = torch.nn.CrossEntropyLoss(reduction='none')
     optimizer = torch.optim.SGD(
         filter(lambda p: p.requires_grad, model.parameters()),
+        # model.parameters(),  # correction unit + finetune
         lr=opt.lr, momentum=opt.momentum, weight_decay=opt.weight_decay
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
     start_epoch = -1
     if opt.resume:
-        ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_g{opt.gpu}'))
+        ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}'))
         model.load_state_dict(ckp['net'])
         optimizer.load_state_dict(ckp['optim'])
         scheduler.load_state_dict(ckp['sched'])
@@ -210,7 +211,8 @@ def patch(opt, model, device):
                 'acc': acc,
                 'indices': extract_indices(model)
             }
-            torch.save(state, get_model_path(opt, state=f'patch_{opt.fs_method}_g{opt.gpu}'))
+            torch.save(state, get_model_path(opt, state=f'patch_{opt.fs_method}'))
+            # torch.save(state, get_model_path(opt, state=f'patch_{opt.fs_method}_finetune'))
             best_acc = acc
         scheduler.step()
     print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))
@@ -244,7 +246,7 @@ def finetune(opt, model, device):
                 'sched': scheduler.state_dict(),
                 'acc': acc
             }
-            torch.save(state, get_model_path(opt, state=f'finetune_g{opt.gpu}'))
+            torch.save(state, get_model_path(opt, state='finetune'))
             best_acc = acc
         scheduler.step()
     print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))
@@ -283,7 +285,7 @@ def sensei(opt, model, device):
                 'sched': scheduler.state_dict(),
                 'acc': acc
             }
-            torch.save(state, get_model_path(opt, state=f'sensei_g{opt.gpu}'))
+            torch.save(state, get_model_path(opt, state='sensei'))
             best_acc = acc
         scheduler.step()
     print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))

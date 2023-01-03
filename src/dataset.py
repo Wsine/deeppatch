@@ -191,6 +191,8 @@ def augmix(image, preprocess, args):
             op = np.random.choice(aug_list)
             image_aug = op(image_aug, args.aug_severity)
         # Preprocessing commutes since all coefficients are convex
+        # if program crashes here, change the hardcoded hyperparameter
+        #   IMAGE_SIZE in the imported augmentations file
         mix += ws[i] * preprocess(image_aug)  # pyright: ignore
 
     mixed = (1 - m) * preprocess(image) + m * mix

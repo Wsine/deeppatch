@@ -73,7 +73,7 @@ def switch_on_the_fly(opt, model, device):
     model = construct_model(opt, model, patch=True)
 
     # Resume
-    ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_g{opt.gpu}'))
+    ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}'))
     model.load_state_dict(ckp['net'])
 
     def _clean_indicator_hook(module, pinput):
@@ -137,7 +137,7 @@ def switch_on_the_fly(opt, model, device):
     #     acc, _ = test(model, testloader, criterion, device)
     #     print('[info] the robustness accuracy for std {:.1f} is {:.4f}%'.format(std, acc))
     #     partial_noisy_acc.append(acc)
-
+    #
     # _, testloader = load_dataset(opt, split='test', noise=True, noise_type='append')
     # noisy_acc, _ = test(model, testloader, criterion, device)
     # print('[info] the robustness accuracy is {:.4f}%'.format(noisy_acc))

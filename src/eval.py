@@ -55,7 +55,7 @@ def main():
                 model2 = copy.deepcopy(model)
                 model2 = construct_model(opt, model2).to(device)
                 rsymbol = str(int(opt.susp_ratio*100))
-                ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_r{rsymbol}_g{opt.gpu}'))
+                ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_r{rsymbol}'))
                 model2.load_state_dict(ckp['net'])
                 for n, m in model2.named_modules():
                     if isinstance(m, ReplaceCorrect):
@@ -69,8 +69,10 @@ def main():
         model = construct_model(opt, model).to(device)
         ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}'))
         # ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_finetune'))
+        # ckp = torch.load(get_model_path(opt, state=f'patch_{opt.fs_method}_r25_{opt.susp_side}'))
+        # ckp = torch.load(get_model_path(opt, state=f'patch_{opt.pt_method}'))
         model.load_state_dict(ckp['net'])
-        if opt.pt_method == 'DP-s':
+        if opt.pt_method in ('DP-s', 'DP-SS', 'SS-DP'):
             evaluate(opt, model, device, eval_spatial=True)
         else:
             evaluate(opt, model, device, eval_noise=True)

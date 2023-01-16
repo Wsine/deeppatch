@@ -24,8 +24,9 @@ def load_model(opt, pretrained=False):
         model.fc = torch.nn.Linear(num_ftrs, 200)
         # w224_state = load_torch_object(ctx, 'resnet18_224_w.pt')
         # model.load_state_dict(w224_state['net'])
-        model.conv1 = torch.nn.Conv2d(3, 64, kernel_size=(3,3), stride=(1,1), padding=(1,1))
-        model.maxpool = torch.nn.Sequential()  # type: ignore
+        if opt.model == 'resnet18f':
+            model.conv1 = torch.nn.Conv2d(3, 64, kernel_size=(3,3), stride=(1,1), padding=(1,1))
+            model.maxpool = torch.nn.Sequential()  # type: ignore
         if pretrained is True:
             model = resume_model(opt, model, state='pretrained')
     else:

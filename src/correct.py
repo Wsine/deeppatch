@@ -151,10 +151,12 @@ def patch(opt, model, device):
     elif opt.pt_method == 'SS-DP':
         _, trainloader = load_dataset(opt, split='train')
         _, valloader = load_dataset(opt, split='val')
-        model = resume_model(opt, model, state=f'sensei_base')
+        model = resume_model(opt, model, state=f'sensei')
     else:
         _, trainloader = load_dataset(opt, split='train', noise=True, noise_type='random')
         _, valloader = load_dataset(opt, split='val', noise=True, noise_type='append')
+        # _, trainloader = load_dataset(opt, split='train')
+        # _, valloader = load_dataset(opt, split='val')
 
     model = construct_model(opt, model)
     model = model.to(device)
@@ -213,6 +215,8 @@ def patch(opt, model, device):
             }
             torch.save(state, get_model_path(opt, state=f'patch_{opt.fs_method}'))
             # torch.save(state, get_model_path(opt, state=f'patch_{opt.fs_method}_finetune'))
+            # torch.save(state, get_model_path(opt, state=f'patch_{opt.fs_method}_r25_{opt.susp_side}'))
+            # torch.save(state, get_model_path(opt, state=f'patch_{opt.pt_method}'))
             best_acc = acc
         scheduler.step()
     print('[info] the best retrain accuracy is {:.4f}%'.format(best_acc))

@@ -245,6 +245,10 @@ def load_dataset(opt, split, noise=False, aug=False, mix=False, **kwargs):
         # there are no labels in test split
         extra_args = {'mode': 'train' if split == 'train' else 'val'}
         common_transformers = [T.ToTensor()]
+        # common_transformers = [
+        #     T.Resize(224, T.InterpolationMode.BICUBIC),  # type: ignore
+        #     T.ToTensor()
+        # ]
         stratify = 'targets'
     elif opt.dataset == 'svhn':
         entry = torchvision.datasets.SVHN
@@ -304,7 +308,7 @@ def load_dataset(opt, split, noise=False, aug=False, mix=False, **kwargs):
     # handle data loader
     shuffle = True if split == 'train' else False
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=opt.batch_size, shuffle=shuffle, num_workers=4
+        dataset, batch_size=opt.batch_size, shuffle=shuffle, num_workers=16
     )
 
     return dataset, dataloader

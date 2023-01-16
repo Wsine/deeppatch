@@ -21,6 +21,9 @@ def blame_ratio_eval(opt, model, device):
         opt.susp_ratio = 0.15 + 0.1 * r  # from [0.15, 0.95, 0.1]
         model2 = copy.deepcopy(model)
         opt.fs_method = f'ratioestim_r{str(int(opt.susp_ratio*100))}'
+        output_file = get_model_path(opt, state=f'patch_{opt.fs_method}')
+        if os.path.exists(output_file):
+            continue
         patch(opt, model2, device)
 
 

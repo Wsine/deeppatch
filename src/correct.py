@@ -306,7 +306,7 @@ def apricot(opt, model, device):
 
     # create rDLMs
     NUM_SUBMODELS = 20
-    SUBSET_SIZE = 10000
+    # SUBSET_SIZE = 10000  # switch to 1000 for stl10
     SUBMODEL_EPOCHS = 40
     subset_step = int((len(trainset) - SUBSET_SIZE) // NUM_SUBMODELS)
 
@@ -440,6 +440,7 @@ def apricot(opt, model, device):
             acc, *_ = test(model, valloader, criterion, device, desc='Eval')
             if acc > best_acc:
                 best_weights = copy.deepcopy(base_weights)
+                print('Saving {}'.format(acc))
                 torch.save({'net': best_weights}, get_model_path(opt, state='apricot'))
                 best_acc = acc
 
@@ -447,6 +448,7 @@ def apricot(opt, model, device):
             acc, *_ = test(model, valloader, criterion, device, desc='Eval')
             if acc > best_acc:
                 best_weights = copy.deepcopy(base_weights)
+                print('Saving {}'.format(acc))
                 torch.save({'net': best_weights}, get_model_path(opt, state='apricot'))
                 best_acc = acc
 

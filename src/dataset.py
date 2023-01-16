@@ -259,6 +259,12 @@ def load_dataset(opt, split, noise=False, aug=False, mix=False, **kwargs):
         mean = std = (0.5, 0.5, 0.5)
         common_transformers = [T.ToTensor(), T.Normalize(mean, std)]
         stratify = 'labels'
+    elif opt.dataset == 'stl10':
+        entry = torchvision.datasets.STL10
+        extra_args = {'split': 'test' if split == 'test' else 'train'}
+        mean = std = (0.5, 0.5, 0.5)
+        common_transformers = [T.ToTensor(), T.Normalize(mean, std)]
+        stratify = 'labels'
     else:  # cifar10 / cifar100
         entry = eval(f'torchvision.datasets.{opt.dataset.upper()}')
         extra_args = {'train': False if split == 'test' else True}

@@ -4,6 +4,7 @@ import torchvision
 from utils import get_model_path
 
 from vendor.playground.svhn.model import svhn as svhn_loader
+from vendor.playground.stl10.model import stl10 as stl10_loader
 
 
 def load_model(opt, pretrained=False):
@@ -15,6 +16,8 @@ def load_model(opt, pretrained=False):
         )
     elif opt.dataset == 'svhn':
         model = svhn_loader(n_channel=32, pretrained=pretrained)
+    elif opt.dataset == 'stl10':
+        model = stl10_loader(n_channel=32, pretrained=pretrained)
     elif opt.dataset == 'tinyimagenet':
         # Load ResNet18
         model = torchvision.models.resnet18()

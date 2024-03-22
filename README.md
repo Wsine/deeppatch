@@ -1,5 +1,3 @@
-<img align="right" height="200" src="https://s1.52poke.wiki/wiki/thumb/f/f8/083Farfetch%27d.png/300px-083Farfetch%27d.png">
-
 # DeepPatch
 
 Project Code: Farfetch'd
@@ -8,7 +6,29 @@ For the technical work, please refer to the following publication.
 
 ## Publication
 
-Under review
+Zhengyuan Wei, Haipeng Wang, Imran Ashraf, and Wing-Kwong Chan. 2023. DeepPatch: Maintaining Deep Learning Model Programs to Retain Standard Accuracy with Substantial Robustness Improvement. ACM Trans. Softw. Eng. Methodol. 32, 6, Article 150 (November 2023), 49 pages. https://doi.org/10.1145/3604609
+
+```
+@article{10.1145/3604609,
+author = {Wei, Zhengyuan and Wang, Haipeng and Ashraf, Imran and Chan, Wing-Kwong},
+title = {DeepPatch: Maintaining Deep Learning Model Programs to Retain Standard Accuracy with Substantial Robustness Improvement},
+year = {2023},
+issue_date = {November 2023},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {32},
+number = {6},
+issn = {1049-331X},
+url = {https://doi.org/10.1145/3604609},
+doi = {10.1145/3604609},
+abstract = {Maintaining a deep learning (DL) model by making the model substantially more robust through retraining with plenty of adversarial examples of non-trivial perturbation strength often reduces the model’s standard accuracy. Many existing model repair or maintenance techniques sacrifice standard accuracy to produce a large gain in robustness or vice versa. This article proposes DeepPatch, a novel technique to maintain filter-intensive DL models. To the best of our knowledge, DeepPatch is the first work to address the challenge of standard accuracy retention while substantially improving the robustness of DL models with plenty of adversarial examples of non-trivial and diverse perturbation strengths. Rather than following the conventional wisdom to generalize all the components of a DL model over the union set of clean and adversarial samples, DeepPatch formulates a novel division of labor method to adaptively activate a subset of its inserted processing units to process individual samples. Its produced model can generate the original or replacement feature maps in each forward pass of the patched model, making the patched model carry an intrinsic property of behaving like the model under maintenance on demand. The overall experimental results show that DeepPatch successfully retains the standard accuracy of all pretrained models while improving the robustness accuracy substantially. However, the models produced by the peer techniques suffer from either large standard accuracy loss or small robustness improvement compared with the models under maintenance, rendering them unsuitable in general to replace the latter.},
+journal = {ACM Trans. Softw. Eng. Methodol.},
+month = {sep},
+articleno = {150},
+numpages = {49},
+keywords = {accuracy recovery, maintenance, Model testing}
+}
+```
 
 ## Prerequisites
 
